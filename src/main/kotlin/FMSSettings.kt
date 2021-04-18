@@ -5,7 +5,7 @@ import com.intellij.openapi.options.UnnamedConfigurable
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.EnumComboBoxModel
 import com.intellij.ui.JBIntSpinner
-import com.intellij.ui.layout.*
+import com.intellij.ui.layout.panel
 import javax.swing.JComponent
 import javax.swing.JSlider
 
@@ -72,12 +72,12 @@ class FMSConfigurable : UnnamedConfigurable {
   @Suppress("SimplifyBooleanWithConstants")
   override fun isModified(): Boolean = with(FMSSettings.instance) {
     false
-    || scrollMode != inertiaDirectionCombobox.selectedItem
-    || trailMode != inertiaAlgorithmCombobox.selectedItem
-    || delayMs != refreshDelayMsSpinner.number
-    || activationMs != activationMsSpinner.number
-    || decayCoeff1000 != decayCoeff1000Slider.value
-    || velocityWindowMs != velocityWindowMsSlider.value
+        || scrollMode != inertiaDirectionCombobox.selectedItem
+        || trailMode != inertiaAlgorithmCombobox.selectedItem
+        || delayMs != refreshDelayMsSpinner.number
+        || activationMs != activationMsSpinner.number
+        || decayCoeff1000 != decayCoeff1000Slider.value
+        || velocityWindowMs != velocityWindowMsSlider.value
   }
 
   override fun reset() = with(FMSSettings.instance) {

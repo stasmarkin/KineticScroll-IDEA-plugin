@@ -40,18 +40,18 @@ abstract class DistanceBasedTrail(
 
   override fun finished(from: Long): Boolean = end <= from
 
-  override fun deltaX(fromUnsafe: Long, toUnsafe: Long): Double {
-    val from = fromUnsafe.coerceIn(initTs, endX) - initTs
-    val to = toUnsafe.coerceIn(initTs, endX) - initTs
-    if (from == to) return 0.0
-    return distance(to, vX) - distance(from, vX)
+  override fun deltaX(from: Long, to: Long): Double {
+    val fromSafe = from.coerceIn(initTs, endX) - initTs
+    val toSafe = to.coerceIn(initTs, endX) - initTs
+    if (fromSafe == toSafe) return 0.0
+    return distance(toSafe, vX) - distance(fromSafe, vX)
   }
 
-  override fun deltaY(fromUnsafe: Long, toUnsafe: Long): Double {
-    val from = fromUnsafe.coerceIn(initTs, endY) - initTs
-    val to = toUnsafe.coerceIn(initTs, endY) - initTs
-    if (from == to) return 0.0
-    return distance(to, vY) - distance(from, vY)
+  override fun deltaY(from: Long, to: Long): Double {
+    val fromSafe = from.coerceIn(initTs, endY) - initTs
+    val toSafe = to.coerceIn(initTs, endY) - initTs
+    if (fromSafe == toSafe) return 0.0
+    return distance(toSafe, vY) - distance(fromSafe, vY)
   }
 }
 

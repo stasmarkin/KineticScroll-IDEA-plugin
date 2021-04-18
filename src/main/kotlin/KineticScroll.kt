@@ -2,8 +2,6 @@ package com.stasmarkin.kineticscroll
 
 import com.intellij.ide.AppLifecycleListener
 import com.intellij.ide.IdeEventQueue
-import com.intellij.ide.plugins.DynamicPluginListener
-import com.intellij.ide.plugins.IdeaPluginDescriptor
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.MouseShortcut
 import com.intellij.openapi.editor.ex.EditorEx
@@ -20,7 +18,10 @@ import com.intellij.util.ui.update.UiNotifyConnector
 import java.awt.AWTEvent
 import java.awt.Cursor
 import java.awt.Point
-import java.awt.event.*
+import java.awt.event.InputEvent
+import java.awt.event.MouseEvent
+import java.awt.event.WindowEvent
+import java.awt.event.WindowFocusListener
 import javax.swing.JComponent
 import javax.swing.JScrollPane
 import kotlin.math.max
@@ -28,15 +29,12 @@ import kotlin.math.max
 
 private fun isToggleMouseButton(event: AWTEvent): Boolean {
   if (event !is MouseEvent) return false
-  val shortcuts = KeymapManager.getInstance().activeKeymap.getShortcuts("KineticScroll.Toggle").filterIsInstance<MouseShortcut>()
+  val shortcuts =
+    KeymapManager.getInstance().activeKeymap.getShortcuts("KineticScroll.Toggle").filterIsInstance<MouseShortcut>()
   return shortcuts.contains(MouseShortcut(event.button, event.modifiersEx, 1))
 }
 
-class KineticScrollStarter : AppLifecycleListener, DynamicPluginListener {
-  companion object {
-    private const val ourPluginId = "com.stasmarkin.kineticscroll"
-  }
-
+class KineticScrollStarter : AppLifecycleListener {
   private var disposable: Disposable? = null
 
   private fun startListen() {
@@ -52,14 +50,6 @@ class KineticScrollStarter : AppLifecycleListener, DynamicPluginListener {
 
   override fun appStarting(project: Project?) = startListen()
   override fun appClosing() = stopListen()
-
-  override fun pluginLoaded(pluginDescriptor: IdeaPluginDescriptor) {
-    if (pluginDescriptor.pluginId.idString == ourPluginId) startListen()
-  }
-
-  override fun beforePluginUnload(pluginDescriptor: IdeaPluginDescriptor, isUpdate: Boolean) {
-    if (pluginDescriptor.pluginId.idString == ourPluginId) stopListen()
-  }
 }
 
 class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
@@ -128,7 +118,8 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
   }
 
   private fun installHandler(newHandler: Handler) {
-    Disposer.register(newHandler, UiNotifyConnector.Once(newHandler.component, object : Activatable.Adapter() {
+    Disposer.register(newHandler, UiNotifyConnector.Once(newHandler.component, object : Activatable {
+      override fun showNotify() = Unit
       override fun hideNotify() {
         if (handler == newHandler) {
           disposeHandler()
@@ -140,7 +131,6 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     if (window != null) {
       val listener = object : WindowFocusListener {
         override fun windowGainedFocus(e: WindowEvent?) = Unit
-
         override fun windowLostFocus(e: WindowEvent?) {
           if (handler == newHandler) {
             disposeHandler()
@@ -163,13 +153,15 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     return requireDispose
   }
 
-  private inner class EditorHandler constructor(val editor: EditorEx, startEvent: MouseEvent)
-    : Handler(editor.component, startEvent) {
+  private inner class EditorHandler constructor(val editor: EditorEx, startEvent: MouseEvent) :
+    Handler(editor.component, startEvent) {
 
     override fun scrollComponent(deltaX: Int, deltaY: Int) {
       editor.scrollingModel.disableAnimation()
-      editor.scrollingModel.scroll(editor.scrollingModel.horizontalScrollOffset + deltaX,
-                                   editor.scrollingModel.verticalScrollOffset + deltaY)
+      editor.scrollingModel.scroll(
+        editor.scrollingModel.horizontalScrollOffset + deltaX,
+        editor.scrollingModel.verticalScrollOffset + deltaY
+      )
       editor.scrollingModel.enableAnimation()
     }
 
@@ -178,8 +170,8 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     }
   }
 
-  private inner class ScrollPaneHandler constructor(val scrollPane: JScrollPane, startEvent: MouseEvent)
-    : Handler(scrollPane, startEvent) {
+  private inner class ScrollPaneHandler constructor(val scrollPane: JScrollPane, startEvent: MouseEvent) :
+    Handler(scrollPane, startEvent) {
 
     override fun scrollComponent(deltaX: Int, deltaY: Int) {
       val hBar = scrollPane.horizontalScrollBar
@@ -239,7 +231,7 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     fun mouseReleased(event: MouseEvent): Boolean {
       setCursor(null)
       val now = System.currentTimeMillis()
-      if  (now < trailSince) return false
+      if (now < trailSince) return false
 
       mouseMoved(event)
       lastScrollTs = now
