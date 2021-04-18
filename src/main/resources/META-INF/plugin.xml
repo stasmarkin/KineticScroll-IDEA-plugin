@@ -1,0 +1,42 @@
+<idea-plugin>
+    <name>Kinetic Mouse Scrolling</name>
+    <id>com.stasmarkin.kineticscroll</id>
+    <version>1.0.0</version>
+
+    <description><![CDATA[
+    Supports mobile-like scrolling in IDE.<br/>
+    Hold middle-button and drag mouse to pull panel naturally with inertia after button release.
+    <br/>
+    Scrolling mode, inertia and other properties can be configured in 'Settings | Appearance & Behavior | Kinetic Scroll'.<br/>
+    Mouse shortcut can be customized in 'Settings | Keymap | Plugins | Kinetic Mouse Scrolling | Kinetic Mouse Scrolling'.
+    ]]></description>
+
+    <vendor email="stasmarkin@gmail.com">Stanislav Markin</vendor>
+
+    <depends>com.intellij.modules.lang</depends>
+
+    <idea-version since-build="193.5233.12"/>
+
+    <applicationListeners>
+        <listener class="com.stasmarkin.kineticscroll.KineticScrollStarter" topic="com.intellij.ide.AppLifecycleListener"
+                  activeInHeadlessMode="false"/>
+        <listener class="com.stasmarkin.kineticscroll.KineticScrollStarter" topic="com.intellij.ide.plugins.DynamicPluginListener"
+                  activeInHeadlessMode="false"/>
+    </applicationListeners>
+
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="com.stasmarkin.kineticscroll.FMSSettings"/>
+        <applicationConfigurable parentId="appearance"
+                                 instance="com.stasmarkin.kineticscroll.FMSConfigurable"
+                                 id="com.stasmarkin.kineticscroll.FMSConfigurable"
+                                 displayName="Kinetic Scroll"/>
+    </extensions>
+
+    <actions>
+        <action id="KineticScroll.Toggle" class="com.intellij.openapi.actionSystem.EmptyAction"
+                text="Kinetic Mouse Scrolling">
+            <mouse-shortcut keymap="$default" keystroke="button2"/>
+        </action>
+    </actions>
+</idea-plugin>
