@@ -8,7 +8,7 @@ repositories {
 }
 
 group = "com.stasmarkin"
-version = "1.0.1"
+version = "1.0.2"
 
 intellij {
   version = "IC"
@@ -18,6 +18,7 @@ intellij {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
   kotlinOptions.jvmTarget = "1.8"
+  kotlinOptions.freeCompilerArgs = listOf("-Xjvm-default=all")
 }
 
 tasks {

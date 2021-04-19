@@ -2,6 +2,8 @@ package com.stasmarkin.kineticscroll
 
 import com.intellij.ide.AppLifecycleListener
 import com.intellij.ide.IdeEventQueue
+import com.intellij.ide.plugins.DynamicPluginListener
+import com.intellij.ide.plugins.IdeaPluginDescriptor
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.MouseShortcut
 import com.intellij.openapi.editor.ex.EditorEx
@@ -34,7 +36,11 @@ private fun isToggleMouseButton(event: AWTEvent): Boolean {
   return shortcuts.contains(MouseShortcut(event.button, event.modifiersEx, 1))
 }
 
-class KineticScrollStarter : AppLifecycleListener {
+class KineticScrollStarter : AppLifecycleListener, DynamicPluginListener {
+  companion object {
+    private const val ourPluginId = "com.stasmarkin.kineticscroll"
+  }
+
   private var disposable: Disposable? = null
 
   private fun startListen() {
@@ -50,6 +56,12 @@ class KineticScrollStarter : AppLifecycleListener {
 
   override fun appStarting(project: Project?) = startListen()
   override fun appClosing() = stopListen()
+  override fun pluginLoaded(pluginDescriptor: IdeaPluginDescriptor) {
+    if (pluginDescriptor.pluginId.idString == ourPluginId) startListen()
+  }
+  override fun beforePluginUnload(pluginDescriptor: IdeaPluginDescriptor, isUpdate: Boolean) {
+    if (pluginDescriptor.pluginId.idString == ourPluginId) stopListen()
+  }
 }
 
 class KineticScrollEventListener : IdeEventQueue.EventDispatcher {

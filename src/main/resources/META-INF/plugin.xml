@@ -1,7 +1,7 @@
 <idea-plugin>
     <name>Kinetic Mouse Scrolling</name>
     <id>com.stasmarkin.kineticscroll</id>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 
     <description><![CDATA[
     Supports mobile-like scrolling in IDE.<br/>
@@ -15,10 +15,12 @@
 
     <depends>com.intellij.modules.lang</depends>
 
-    <idea-version since-build="193.5233.12"/>
+    <idea-version since-build="203.7717.56"/>
 
     <applicationListeners>
         <listener class="com.stasmarkin.kineticscroll.KineticScrollStarter" topic="com.intellij.ide.AppLifecycleListener"
+                  activeInHeadlessMode="false"/>
+        <listener class="com.stasmarkin.kineticscroll.KineticScrollStarter" topic="com.intellij.ide.plugins.DynamicPluginListener"
                   activeInHeadlessMode="false"/>
     </applicationListeners>
 
