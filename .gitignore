@@ -7,3 +7,6 @@ gradlew*
 !.idea/vcs.xml
 !.idea/codeStyles
 !.idea/codeStyles/**
+
+vcs.xml
+.sdkmanrc

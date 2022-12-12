@@ -2,7 +2,6 @@ package com.stasmarkin.kineticscroll
 
 import kotlin.math.*
 
-private const val N = 12
 private const val ln2 = 0.6931471805599453
 
 fun TrailMovement.withScrollMode(mode: InertiaDirection) = when (mode) {
@@ -59,10 +58,12 @@ class ExponentialSlowdownTrail(
   vX: Double,
   vY: Double,
   initTs: Long,
-  pUnsafe: Int
+  pUnsafe: Int,
+  subpixelTrail: Int,
 ) : DistanceBasedTrail(vX, vY, initTs) {
 
   private val p = pUnsafe.coerceAtLeast(0) + 1
+  private val n = (subpixelTrail + 20) / 10.0 //reasonable normalization
 
   // v(t) = v0 / 2^(t/p)
   // s(t) = - v0 * p / ln(2) / 2^(t/p)
@@ -78,7 +79,7 @@ class ExponentialSlowdownTrail(
   // t = p * (N + log2(v0))
   // log2(v0) = ln(v0) / ln2
   // since v0 = (vX^2 + vY^2)^0.5, ln(v0) = 0.5 * ln(vX^2 + vY^2)
-  override val end = initTs + (p * (N + 0.5 * ln(vX * vX + vY * vY) / ln2)).toLong()
+  override val end = initTs + (p * (n + 0.5 * ln(vX * vX + vY * vY) / ln2)).toLong()
   override val endX = end
   override val endY = end
 }

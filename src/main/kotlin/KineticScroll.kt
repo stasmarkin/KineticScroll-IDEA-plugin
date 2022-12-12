@@ -1,15 +1,11 @@
 package com.stasmarkin.kineticscroll
 
-import com.intellij.ide.AppLifecycleListener
 import com.intellij.ide.IdeEventQueue
-import com.intellij.ide.plugins.DynamicPluginListener
-import com.intellij.ide.plugins.IdeaPluginDescriptor
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.MouseShortcut
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.impl.EditorComponentImpl
 import com.intellij.openapi.keymap.KeymapManager
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.ComponentUtil
 import com.intellij.ui.awt.RelativePoint
@@ -20,10 +16,7 @@ import com.intellij.util.ui.update.UiNotifyConnector
 import java.awt.AWTEvent
 import java.awt.Cursor
 import java.awt.Point
-import java.awt.event.InputEvent
-import java.awt.event.MouseEvent
-import java.awt.event.WindowEvent
-import java.awt.event.WindowFocusListener
+import java.awt.event.*
 import javax.swing.JComponent
 import javax.swing.JScrollPane
 import kotlin.math.max
@@ -34,34 +27,6 @@ private fun isToggleMouseButton(event: AWTEvent): Boolean {
   val shortcuts =
     KeymapManager.getInstance().activeKeymap.getShortcuts("KineticScroll.Toggle").filterIsInstance<MouseShortcut>()
   return shortcuts.contains(MouseShortcut(event.button, event.modifiersEx, 1))
-}
-
-class KineticScrollStarter : AppLifecycleListener, DynamicPluginListener {
-  companion object {
-    private const val ourPluginId = "com.stasmarkin.kineticscroll"
-  }
-
-  private var disposable: Disposable? = null
-
-  private fun startListen() {
-    if (disposable != null) return
-    disposable = Disposer.newDisposable()
-    IdeEventQueue.getInstance().addDispatcher(KineticScrollEventListener(), disposable)
-  }
-
-  private fun stopListen() {
-    disposable?.let { Disposer.dispose(it) }
-    disposable = null
-  }
-
-  override fun appStarting(project: Project?) = startListen()
-  override fun appClosing() = stopListen()
-  override fun pluginLoaded(pluginDescriptor: IdeaPluginDescriptor) {
-    if (pluginDescriptor.pluginId.idString == ourPluginId) startListen()
-  }
-  override fun beforePluginUnload(pluginDescriptor: IdeaPluginDescriptor, isUpdate: Boolean) {
-    if (pluginDescriptor.pluginId.idString == ourPluginId) stopListen()
-  }
 }
 
 class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
@@ -90,10 +55,12 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
           installHandler(EditorHandler(editor, event))
           true
         }
+
         scrollPane != null -> {
           installHandler(ScrollPaneHandler(scrollPane, event))
           true
         }
+
         else -> false
       }
     }
@@ -202,11 +169,6 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
   private abstract inner class Handler constructor(val component: JComponent, startEvent: MouseEvent) : Disposable {
 
     private val settings = FMSSettings.instance
-    private val delayMs = settings.delayMs
-    private val decayCoeff1000 = settings.decayCoeff1000
-    private val velocityWindowMs = settings.velocityWindowMs
-    private val scrollMode = settings.scrollMode
-    private val trailMode = settings.trailMode
     private val scrollSinceTs: Long = System.currentTimeMillis()
     private val trailSince: Long = scrollSinceTs + settings.activationMs
 
@@ -247,10 +209,17 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
 
       mouseMoved(event)
       lastScrollTs = now
-      trail = when (trailMode) {
-        InertiaAlgorithm.EXPONENTIAL -> ExponentialSlowdownTrail(velocityX, velocityY, now, decayCoeff1000)
-        InertiaAlgorithm.LINEAR -> LinearSlowdownTrail(velocityX, velocityY, now, decayCoeff1000)
-      }.withScrollMode(scrollMode)
+      trail = when (settings.trailMode) {
+        InertiaAlgorithm.EXPONENTIAL -> ExponentialSlowdownTrail(
+          velocityX,
+          velocityY,
+          now,
+          settings.decayCoeff1000,
+          settings.subpixelTrail
+        )
+
+        InertiaAlgorithm.LINEAR -> LinearSlowdownTrail(velocityX, velocityY, now, settings.decayCoeff1000)
+      }.withScrollMode(settings.scrollMode)
 
       return true
     }
@@ -276,7 +245,7 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
       if (now <= lastMoveTs) return
       val deltaTs = now - lastMoveTs
 
-      val windowStart = max(scrollSinceTs, now - velocityWindowMs)
+      val windowStart = max(scrollSinceTs, now - settings.throwingSensivity)
       if (windowStart >= lastMoveTs) {
         velocityX = 1.0 * moveX / deltaTs
         velocityY = 1.0 * moveY / deltaTs
@@ -323,7 +292,7 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     }
 
     private fun scheduleScrollEvent() {
-      alarm.addRequest(this@Handler::doScroll, delayMs)
+      alarm.addRequest(this@Handler::doScroll, 1000 / settings.fps)
     }
 
     protected abstract fun scrollComponent(deltaX: Int, deltaY: Int)

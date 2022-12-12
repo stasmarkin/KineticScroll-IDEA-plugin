@@ -1,6 +1,9 @@
+import org.jetbrains.intellij.tasks.PublishPluginTask
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
-  kotlin("jvm") version "1.4.31"
-  id("org.jetbrains.intellij") version "0.7.2"
+  kotlin("jvm") version "1.7.21"
+  id("org.jetbrains.intellij") version "1.10.1"
 }
 
 repositories {
@@ -8,23 +11,19 @@ repositories {
 }
 
 group = "com.stasmarkin"
-version = "1.0.2"
+version = "1.0.3"
 
 intellij {
-  version = "IC"
-  version = "2021.1"
-  pluginName = "com.stasmarkin.kineticscroll"
+  type.set("IC")
+  version.set("2022.3")
+  updateSinceUntilBuild.set(false)
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-  kotlinOptions.jvmTarget = "1.8"
-  kotlinOptions.freeCompilerArgs = listOf("-Xjvm-default=all")
+tasks.withType<PublishPluginTask> {
+  token.set(System.getProperty("PUBLISH_TOKEN"))
 }
 
-tasks {
-  patchPluginXml {
-    // do not patch supported versions
-    sinceBuild(null)
-    untilBuild(null)
-  }
+tasks.withType<KotlinCompile> {
+  kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
+  kotlinOptions.freeCompilerArgs = kotlinOptions.freeCompilerArgs + listOf("-Xjvm-default=all")
 }

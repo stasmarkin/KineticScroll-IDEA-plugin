@@ -1,7 +1,8 @@
 <idea-plugin>
-    <name>Kinetic Mouse Scrolling</name>
     <id>com.stasmarkin.kineticscroll</id>
-    <version>1.0.2</version>
+    <name>Kinetic Mouse Scrolling</name>
+    <version>1.0.3</version>
+    <vendor email="stasmarkin@gmail.com">Stanislav Markin</vendor>
 
     <description><![CDATA[
     Supports mobile-like scrolling in IDE.<br/>
@@ -11,30 +12,29 @@
     Mouse shortcut can be customized in 'Settings | Keymap | Plugins | Kinetic Mouse Scrolling | Kinetic Mouse Scrolling'.
     ]]></description>
 
-    <vendor email="stasmarkin@gmail.com">Stanislav Markin</vendor>
+    <change-notes><![CDATA[
+        1.0.3: Lifecycle fix + settings menu
+    ]]></change-notes>
 
-    <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.platform</depends>
 
-    <idea-version since-build="203.7717.56"/>
-
-    <applicationListeners>
-        <listener class="com.stasmarkin.kineticscroll.KineticScrollStarter" topic="com.intellij.ide.AppLifecycleListener"
-                  activeInHeadlessMode="false"/>
-        <listener class="com.stasmarkin.kineticscroll.KineticScrollStarter" topic="com.intellij.ide.plugins.DynamicPluginListener"
-                  activeInHeadlessMode="false"/>
-    </applicationListeners>
-
+    <idea-version since-build="223"/>
 
     <extensions defaultExtensionNs="com.intellij">
+        <editorAppearanceConfigurable instance="com.stasmarkin.kineticscroll.FMSConfigurable"/>
         <applicationService serviceImplementation="com.stasmarkin.kineticscroll.FMSSettings"/>
+        <ideEventQueueDispatcher implementation="com.stasmarkin.kineticscroll.KineticScrollEventListener"/>
+
         <applicationConfigurable parentId="appearance"
                                  instance="com.stasmarkin.kineticscroll.FMSConfigurable"
                                  id="com.stasmarkin.kineticscroll.FMSConfigurable"
                                  displayName="Kinetic Scroll"/>
     </extensions>
 
+
     <actions>
-        <action id="KineticScroll.Toggle" class="com.intellij.openapi.actionSystem.EmptyAction"
+        <action id="KineticScroll.Toggle"
+                class="com.intellij.openapi.actionSystem.EmptyAction"
                 text="Kinetic Mouse Scrolling">
             <mouse-shortcut keymap="$default" keystroke="button2"/>
         </action>
