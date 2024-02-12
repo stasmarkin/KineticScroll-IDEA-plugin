@@ -32,18 +32,18 @@ private fun isToggleMouseButton(event: AWTEvent): Boolean {
 class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
   private var handler: Handler? = null
 
-  override fun dispatch(event: AWTEvent): Boolean {
-    if (event !is InputEvent || event.isConsumed) {
+  override fun dispatch(e: AWTEvent): Boolean {
+    if (e !is InputEvent || e.isConsumed) {
       return false
     }
 
-    if (event !is MouseEvent) {
+    if (e !is MouseEvent) {
       disposeHandler() //whatever happened, let's stop scrolling
       return false
     }
 
-    if (isToggleMouseButton(event) && event.id == MouseEvent.MOUSE_PRESSED) {
-      val component = UIUtil.getDeepestComponentAt(event.component, event.x, event.y) as? JComponent
+    if (isToggleMouseButton(e) && e.id == MouseEvent.MOUSE_PRESSED) {
+      val component = UIUtil.getDeepestComponentAt(e.component, e.x, e.y) as? JComponent
       val editor = findEditor(component)
       val scrollPane = findScrollPane(component)
       disposeHandler()
@@ -52,12 +52,12 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
 
       return when {
         editor != null -> {
-          installHandler(EditorHandler(editor, event))
+          installHandler(EditorHandler(editor, e))
           true
         }
 
         scrollPane != null -> {
-          installHandler(ScrollPaneHandler(scrollPane, event))
+          installHandler(ScrollPaneHandler(scrollPane, e))
           true
         }
 
@@ -65,21 +65,21 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
       }
     }
 
-    if (event.id == MouseEvent.MOUSE_RELEASED) {
+    if (e.id == MouseEvent.MOUSE_RELEASED) {
       handler?.let { handler ->
-        val result = handler.mouseReleased(event)
+        val result = handler.mouseReleased(e)
         if (!result) disposeHandler()
         return result
       }
     }
 
-    if (event.id == MouseEvent.MOUSE_PRESSED) {
+    if (e.id == MouseEvent.MOUSE_PRESSED) {
       return disposeHandler()
     }
 
-    if ((event.id == MouseEvent.MOUSE_MOVED || event.id == MouseEvent.MOUSE_DRAGGED)) {
+    if ((e.id == MouseEvent.MOUSE_MOVED || e.id == MouseEvent.MOUSE_DRAGGED)) {
       handler?.let { handler ->
-        handler.mouseMoved(event)
+        handler.mouseMoved(e)
         return true
       }
     }
@@ -97,7 +97,7 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
   }
 
   private fun installHandler(newHandler: Handler) {
-    Disposer.register(newHandler, UiNotifyConnector.Once(newHandler.component, object : Activatable {
+    Disposer.register(newHandler, UiNotifyConnector.Once.installOn(newHandler.component, object : Activatable {
       override fun showNotify() = Unit
       override fun hideNotify() {
         if (handler == newHandler) {

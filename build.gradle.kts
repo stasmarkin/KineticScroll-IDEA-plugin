@@ -2,8 +2,9 @@ import org.jetbrains.intellij.tasks.PublishPluginTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  kotlin("jvm") version "1.7.21"
-  id("org.jetbrains.intellij") version "1.10.1"
+  kotlin("jvm") version "1.9.22"
+  // https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html#ide-configuration
+  id("org.jetbrains.intellij") version "1.17.1"
 }
 
 repositories {
@@ -11,11 +12,11 @@ repositories {
 }
 
 group = "com.stasmarkin"
-version = "1.0.3"
+version = "1.0.4"
 
 intellij {
   type.set("IC")
-  version.set("2022.3")
+  version.set("2023.3")
   updateSinceUntilBuild.set(false)
 }
 
