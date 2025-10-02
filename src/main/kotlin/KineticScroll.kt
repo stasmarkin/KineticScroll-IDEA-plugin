@@ -20,8 +20,6 @@ import javax.swing.JComponent
 import javax.swing.JScrollPane
 import kotlin.math.max
 
-private const val TERMINAL_SCALE_DOWN = 15.0
-
 private fun isToggleMouseButton(event: AWTEvent): Boolean {
   if (event !is MouseEvent) return false
   val shortcuts =
@@ -62,6 +60,9 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
   // AWTEventListener - handles events at system level before component listeners
   override fun eventDispatched(event: AWTEvent) {
     if (event !is MouseEvent) return
+
+    val settings = FMSSettings.instance
+    if (!settings.enableTerminalHandler) return
 
     val component = UIUtil.getDeepestComponentAt(event.component, event.x, event.y) as? JComponent
     val terminal = findTerminal(component)
@@ -174,6 +175,8 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
   }
 
   private fun findTerminal(component: JComponent?): JBTerminalWidget? {
+    if (!FMSSettings.instance.enableTerminalHandler) return null
+
     return UIUtil.getParentOfType(JBTerminalWidget::class.java, component)
   }
 
@@ -292,7 +295,7 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
 
       val vBar = scrollBar
       if (vBar != null) {
-        val scaledDelta = (deltaY / TERMINAL_SCALE_DOWN).toInt()
+        val scaledDelta = (deltaY / FMSSettings.instance.terminalScrollScale.toDouble()).toInt()
         vBar.value = (vBar.value + scaledDelta).coerceIn(vBar.minimum, vBar.maximum)
       }
     }

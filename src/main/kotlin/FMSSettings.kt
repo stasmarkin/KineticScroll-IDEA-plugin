@@ -5,8 +5,10 @@ import com.intellij.openapi.components.*
 import com.intellij.openapi.options.UiDslUnnamedConfigurable
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.EnumComboBoxModel
+import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.dsl.builder.*
-import com.intellij.ui.layout.*
+import com.intellij.ui.layout.selected
+import com.intellij.ui.layout.selectedValueIs
 
 
 enum class InertiaAlgorithm { EXPONENTIAL, LINEAR, }
@@ -33,6 +35,8 @@ class FMSSettings : BaseState(), PersistentStateComponent<FMSSettings> {
   var decayCoeff1000 by property(500)
   var throwingSensivity by property(140)
   var subpixelTrail by property(35)
+  var enableTerminalHandler by property(true)
+  var terminalScrollScale by property(15)
 }
 
 
@@ -46,6 +50,8 @@ class FMSConfigurable : UiDslUnnamedConfigurable.Simple() {
       slider(20, 120, 5, 20)
         .bindValue(settings::fps)
     }
+
+    separator()
 
     row {
       label("Min drugging time before throw activation, ms:")
@@ -82,7 +88,27 @@ class FMSConfigurable : UiDslUnnamedConfigurable.Simple() {
       label("Subpixel trail: ")
       slider(0, 100, 5, 20)
         .bindValue(settings::subpixelTrail)
+        .comment(
+          "Higher value = more noticeable one pixel movements in the end of scroll<br>" +
+          "Lower value = more abrupt stop"
+        )
     }.visibleIf(comboBox.selectedValueIs(InertiaAlgorithm.EXPONENTIAL))
+
+    separator()
+
+    lateinit var terminalCheckbox: JBCheckBox
+    row {
+      terminalCheckbox = checkBox("Enable kinetic scrolling in terminals")
+        .bindSelected(settings::enableTerminalHandler)
+        .component
+    }
+
+    row {
+      label("Terminal scroll slowdown:")
+      slider(1, 30, 1, 15)
+        .bindValue(settings::terminalScrollScale)
+        .comment("Higher value = slower scrolling")
+    }.visibleIf(terminalCheckbox.selected)
   }
 
 }
