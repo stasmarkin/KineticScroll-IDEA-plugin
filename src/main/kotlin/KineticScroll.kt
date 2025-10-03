@@ -312,7 +312,7 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
     private val trailSince: Long = scrollSinceTs + settings.activationMs
 
 
-    private val alarm = Alarm()
+    private val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
 
     private var lastScrollTs: Long = scrollSinceTs
     private var lastMoveTs: Long = scrollSinceTs
@@ -338,7 +338,6 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
     override fun dispose() {
       isDisposed = true
       setCursor(null)
-      Disposer.dispose(alarm)
     }
 
     fun mouseReleased(event: MouseEvent): Boolean {

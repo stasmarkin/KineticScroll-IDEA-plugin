@@ -13,6 +13,7 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        1.0.5: Fixed deprecated Alarm() constructor usage<br/>
         1.0.4: Deprecated API fix<br/>
         1.0.3: Lifecycle fix + settings menu
     ]]></change-notes>
