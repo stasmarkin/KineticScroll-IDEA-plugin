@@ -14,42 +14,6 @@ import com.intellij.ui.layout.selectedValueIs
 enum class InertiaAlgorithm { EXPONENTIAL, LINEAR, }
 enum class InertiaDirection { BOTH, VERTICAL, NONE }
 
-// Mapping functions for centered scroll multiplier slider
-// Slider range: 0-100, where 50 = x1.0
-object ScrollMultiplierMapper {
-    // Maps slider position (0-100) to scroll scale percentage (20-500)
-    fun sliderToScale(sliderValue: Int): Int {
-        return when {
-            sliderValue < 50 -> {
-                // Left half: 0->20%, 50->100%
-                // Linear interpolation from x0.2 to x1.0
-                20 + ((sliderValue / 50.0) * 80).toInt()
-            }
-
-            else -> {
-                // Right half: 50->100%, 100->500%
-                // Linear interpolation from x1.0 to x5.0
-                100 + (((sliderValue - 50) / 50.0) * 400).toInt()
-            }
-        }
-    }
-
-    // Maps scroll scale percentage (20-500) to slider position (0-100)
-    fun scaleToSlider(scaleValue: Int): Int {
-        return when {
-            scaleValue < 100 -> {
-                // Map 20-100 to slider 0-50
-                ((scaleValue - 20) / 80.0 * 50).toInt()
-            }
-
-            else -> {
-                // Map 100-500 to slider 50-100
-                50 + (((scaleValue - 100) / 400.0) * 50).toInt()
-            }
-        }
-    }
-}
-
 @Service(Service.Level.APP)
 @State(name = "KineticMouseScrollSettings", storages = [Storage("other.xml")])
 class FMSSettings : BaseState(), PersistentStateComponent<FMSSettings> {
@@ -95,6 +59,10 @@ class FMSConfigurable : UiDslUnnamedConfigurable.Simple() {
         row {
             label("Scroll speed multiplier:")
             slider(0, 100, 5, 50)
+                .bindValue(
+                    getter = { scaleToSlider(settings.scrollScale) },
+                    setter = { settings.scrollScale = sliderToScale(it) },
+                )
                 .applyToComponent {
                     paintTicks = true
                     paintLabels = true
@@ -109,9 +77,6 @@ class FMSConfigurable : UiDslUnnamedConfigurable.Simple() {
                     labels[100] = javax.swing.JLabel("x5")
                     labelTable = labels
 
-                    // Initialize slider from stored scale value
-                    value = ScrollMultiplierMapper.scaleToSlider(settings.scrollScale)
-
                     // Add custom change listener for sticky behavior at x1.0 (slider position 50)
                     addChangeListener {
                         val sliderValue = this.value
@@ -121,9 +86,6 @@ class FMSConfigurable : UiDslUnnamedConfigurable.Simple() {
                         if (sliderValue in (50 - snapThreshold)..(50 + snapThreshold) && sliderValue != 50) {
                             this.value = 50
                         }
-
-                        // Update the actual scale value
-                        settings.scrollScale = ScrollMultiplierMapper.sliderToScale(this.value)
                     }
                 }
                 .comment("Adjusts scroll speed (x0.20 to x5.00, sticky at x1.00)")
@@ -199,4 +161,35 @@ class FMSConfigurable : UiDslUnnamedConfigurable.Simple() {
         }.visibleIf(terminalCheckbox.selected)
     }
 
+}
+
+
+private fun sliderToScale(sliderValue: Int): Int {
+    return when {
+        sliderValue < 50 -> {
+            // Left half: 0->20%, 50->100%
+            // Linear interpolation from x0.2 to x1.0
+            20 + ((sliderValue / 50.0) * 80).toInt()
+        }
+
+        else -> {
+            // Right half: 50->100%, 100->500%
+            // Linear interpolation from x1.0 to x5.0
+            100 + (((sliderValue - 50) / 50.0) * 400).toInt()
+        }
+    }
+}
+
+private fun scaleToSlider(scaleValue: Int): Int {
+    return when {
+        scaleValue < 100 -> {
+            // Map 20-100 to slider 0-50
+            ((scaleValue - 20) / 80.0 * 50).toInt()
+        }
+
+        else -> {
+            // Map 100-500 to slider 50-100
+            50 + (((scaleValue - 100) / 400.0) * 50).toInt()
+        }
+    }
 }
