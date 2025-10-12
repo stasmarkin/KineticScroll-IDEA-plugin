@@ -220,10 +220,13 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
     Handler(editor.component, startEvent) {
 
     override fun scrollComponent(deltaX: Int, deltaY: Int) {
+      val scaledDeltaX = applyScrollScale(deltaX)
+      val scaledDeltaY = applyScrollScale(deltaY)
+
       editor.scrollingModel.disableAnimation()
       editor.scrollingModel.scroll(
-        editor.scrollingModel.horizontalScrollOffset + deltaX,
-        editor.scrollingModel.verticalScrollOffset + deltaY
+        editor.scrollingModel.horizontalScrollOffset + scaledDeltaX,
+        editor.scrollingModel.verticalScrollOffset + scaledDeltaY
       )
       editor.scrollingModel.enableAnimation()
     }
@@ -237,11 +240,14 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
     Handler(scrollPane, startEvent) {
 
     override fun scrollComponent(deltaX: Int, deltaY: Int) {
+      val scaledDeltaX = applyScrollScale(deltaX)
+      val scaledDeltaY = applyScrollScale(deltaY)
+
       val hBar = scrollPane.horizontalScrollBar
       val vBar = scrollPane.verticalScrollBar
 
-      if (hBar != null && hBar.isVisible) hBar.value = hBar.value + deltaX
-      if (vBar != null && vBar.isVisible) vBar.value = vBar.value + deltaY
+      if (hBar != null && hBar.isVisible) hBar.value = hBar.value + scaledDeltaX
+      if (vBar != null && vBar.isVisible) vBar.value = vBar.value + scaledDeltaY
     }
 
     @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
@@ -295,8 +301,10 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
 
       val vBar = scrollBar
       if (vBar != null) {
-        val scaledDelta = (deltaY / FMSSettings.instance.terminalScrollScale.toDouble()).toInt()
-        vBar.value = (vBar.value + scaledDelta).coerceIn(vBar.minimum, vBar.maximum)
+        // Apply terminal-specific slowdown, then apply general scroll scale
+        val terminalScaledDelta = (deltaY / FMSSettings.instance.terminalScrollScale.toDouble()).toInt()
+        val finalDelta = applyScrollScale(terminalScaledDelta)
+        vBar.value = (vBar.value + finalDelta).coerceIn(vBar.minimum, vBar.maximum)
       }
     }
 
@@ -328,6 +336,12 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
 
     var isDisposed = false
       private set
+
+    protected fun applyScrollScale(delta: Int): Int {
+      val scale = settings.scrollScale / 100.0
+      val inverse = if (settings.inverseScrolling) -1 else 1
+      return (delta * scale * inverse).toInt()
+    }
 
     fun start(): Handler {
       setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))
