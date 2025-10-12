@@ -74,7 +74,8 @@ class FMSSettings : BaseState(), PersistentStateComponent<FMSSettings> {
     var enableTerminalHandler by property(true)
     var terminalScrollScale by property(15)
     var scrollScale by property(100) // stored as percentage (100 = 1.0x, 200 = 2.0x, 20 = 0.2x)
-    var inverseScrolling by property(false)
+    var inverseVertical by property(false)
+    var inverseHorizontal by property(false)
 }
 
 
@@ -129,9 +130,13 @@ class FMSConfigurable : UiDslUnnamedConfigurable.Simple() {
         }
 
         row {
-            checkBox("Inverse scrolling direction")
-                .bindSelected(settings::inverseScrolling)
-                .comment("Reverses the scrolling direction")
+            checkBox("Inverse vertical scrolling")
+                .bindSelected(settings::inverseVertical)
+        }
+
+        row {
+            checkBox("Inverse horizontal scrolling")
+                .bindSelected(settings::inverseHorizontal)
         }
 
         separator()

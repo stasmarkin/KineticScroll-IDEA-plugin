@@ -220,8 +220,8 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
     Handler(editor.component, startEvent) {
 
     override fun scrollComponent(deltaX: Int, deltaY: Int) {
-      val scaledDeltaX = applyScrollScale(deltaX)
-      val scaledDeltaY = applyScrollScale(deltaY)
+      val scaledDeltaX = applyScrollScale(deltaX, isVertical = false)
+      val scaledDeltaY = applyScrollScale(deltaY, isVertical = true)
 
       editor.scrollingModel.disableAnimation()
       editor.scrollingModel.scroll(
@@ -240,8 +240,8 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
     Handler(scrollPane, startEvent) {
 
     override fun scrollComponent(deltaX: Int, deltaY: Int) {
-      val scaledDeltaX = applyScrollScale(deltaX)
-      val scaledDeltaY = applyScrollScale(deltaY)
+      val scaledDeltaX = applyScrollScale(deltaX, isVertical = false)
+      val scaledDeltaY = applyScrollScale(deltaY, isVertical = true)
 
       val hBar = scrollPane.horizontalScrollBar
       val vBar = scrollPane.verticalScrollBar
@@ -303,7 +303,7 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
       if (vBar != null) {
         // Apply terminal-specific slowdown, then apply general scroll scale
         val terminalScaledDelta = (deltaY / FMSSettings.instance.terminalScrollScale.toDouble()).toInt()
-        val finalDelta = applyScrollScale(terminalScaledDelta)
+        val finalDelta = applyScrollScale(terminalScaledDelta, isVertical = true)
         vBar.value = (vBar.value + finalDelta).coerceIn(vBar.minimum, vBar.maximum)
       }
     }
@@ -337,9 +337,9 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListen
     var isDisposed = false
       private set
 
-    protected fun applyScrollScale(delta: Int): Int {
+    protected fun applyScrollScale(delta: Int, isVertical: Boolean): Int {
       val scale = settings.scrollScale / 100.0
-      val inverse = if (settings.inverseScrolling) -1 else 1
+      val inverse = if (isVertical && settings.inverseVertical || !isVertical && settings.inverseHorizontal) -1 else 1
       return (delta * scale * inverse).toInt()
     }
 
