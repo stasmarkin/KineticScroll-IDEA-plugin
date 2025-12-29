@@ -7,20 +7,18 @@ import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.impl.EditorComponentImpl
 import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.terminal.JBTerminalWidget
 import com.intellij.ui.ComponentUtil
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.Alarm
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.update.Activatable
 import com.intellij.util.ui.update.UiNotifyConnector
-import java.awt.AWTEvent
-import java.awt.Cursor
-import java.awt.Point
+import java.awt.*
 import java.awt.event.*
 import javax.swing.JComponent
 import javax.swing.JScrollPane
 import kotlin.math.max
-
 
 private fun isToggleMouseButton(event: AWTEvent): Boolean {
   if (event !is MouseEvent) return false
@@ -29,9 +27,71 @@ private fun isToggleMouseButton(event: AWTEvent): Boolean {
   return shortcuts.contains(MouseShortcut(event.button, event.modifiersEx, 1))
 }
 
-class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
+class KineticScrollEventListener : IdeEventQueue.EventDispatcher, AWTEventListener, Disposable {
   private var handler: Handler? = null
+  private var isAWTListenerRegistered = false
 
+  init {
+    registerAWTEventListener()
+  }
+
+  private fun registerAWTEventListener() {
+    if (!isAWTListenerRegistered) {
+      Toolkit.getDefaultToolkit().addAWTEventListener(
+        this,
+        AWTEvent.MOUSE_EVENT_MASK or AWTEvent.MOUSE_MOTION_EVENT_MASK
+      )
+      isAWTListenerRegistered = true
+    }
+  }
+
+  private fun unregisterAWTEventListener() {
+    if (isAWTListenerRegistered) {
+      Toolkit.getDefaultToolkit().removeAWTEventListener(this)
+      isAWTListenerRegistered = false
+    }
+  }
+
+  override fun dispose() {
+    disposeHandler()
+    unregisterAWTEventListener()
+  }
+
+  // AWTEventListener - handles events at system level before component listeners
+  override fun eventDispatched(event: AWTEvent) {
+    if (event !is MouseEvent) return
+
+    val settings = FMSSettings.instance
+    if (!settings.enableTerminalHandler) return
+
+    val component = UIUtil.getDeepestComponentAt(event.component, event.x, event.y) as? JComponent
+    val terminal = findTerminal(component)
+
+    // Handle terminal events exclusively through AWTEventListener
+    if (terminal != null || handler is TerminalHandler) {
+      when {
+        // Middle button pressed - start kinetic scroll
+        isToggleMouseButton(event) && event.id == MouseEvent.MOUSE_PRESSED && terminal != null -> {
+          handleMouseEvent(event)
+          event.consume()
+        }
+        // Any mouse event when we have an active terminal handler - consume it
+        handler is TerminalHandler -> {
+          when (event.id) {
+            MouseEvent.MOUSE_PRESSED,
+            MouseEvent.MOUSE_RELEASED,
+            MouseEvent.MOUSE_DRAGGED,
+            MouseEvent.MOUSE_MOVED -> {
+              handleMouseEvent(event)
+              event.consume()
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // IdeEventQueue.EventDispatcher - fallback for non-terminal components
   override fun dispatch(e: AWTEvent): Boolean {
     if (e !is InputEvent || e.isConsumed) {
       return false
@@ -42,17 +102,35 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
       return false
     }
 
+    // Skip terminal handling here since it's handled by AWTEventListener
+    val component = UIUtil.getDeepestComponentAt(e.component, e.x, e.y) as? JComponent
+    val terminal = findTerminal(component)
+    if (terminal != null) {
+      // Let AWTEventListener handle terminals
+      return false
+    }
+
+    return handleMouseEvent(e)
+  }
+
+  private fun handleMouseEvent(e: MouseEvent): Boolean {
     if (isToggleMouseButton(e) && e.id == MouseEvent.MOUSE_PRESSED) {
       val component = UIUtil.getDeepestComponentAt(e.component, e.x, e.y) as? JComponent
       val editor = findEditor(component)
+      val terminal = findTerminal(component)
       val scrollPane = findScrollPane(component)
       disposeHandler()
 
-      if (handler == null && editor == null && scrollPane == null) return false
+      if (handler == null && editor == null && terminal == null && scrollPane == null) return false
 
       return when {
         editor != null -> {
           installHandler(EditorHandler(editor, e))
+          true
+        }
+
+        terminal != null -> {
+          installHandler(TerminalHandler(terminal, e))
           true
         }
 
@@ -96,6 +174,12 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     return UIUtil.getParentOfType(JScrollPane::class.java, component)
   }
 
+  private fun findTerminal(component: JComponent?): JBTerminalWidget? {
+    if (!FMSSettings.instance.enableTerminalHandler) return null
+
+    return UIUtil.getParentOfType(JBTerminalWidget::class.java, component)
+  }
+
   private fun installHandler(newHandler: Handler) {
     Disposer.register(newHandler, UiNotifyConnector.Once.installOn(newHandler.component, object : Activatable {
       override fun showNotify() = Unit
@@ -132,14 +216,17 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     return requireDispose
   }
 
-  private inner class EditorHandler constructor(val editor: EditorEx, startEvent: MouseEvent) :
+  private inner class EditorHandler(val editor: EditorEx, startEvent: MouseEvent) :
     Handler(editor.component, startEvent) {
 
     override fun scrollComponent(deltaX: Int, deltaY: Int) {
+      val scaledDeltaX = applyScrollScale(deltaX, isVertical = false)
+      val scaledDeltaY = applyScrollScale(deltaY, isVertical = true)
+
       editor.scrollingModel.disableAnimation()
       editor.scrollingModel.scroll(
-        editor.scrollingModel.horizontalScrollOffset + deltaX,
-        editor.scrollingModel.verticalScrollOffset + deltaY
+        editor.scrollingModel.horizontalScrollOffset + scaledDeltaX,
+        editor.scrollingModel.verticalScrollOffset + scaledDeltaY
       )
       editor.scrollingModel.enableAnimation()
     }
@@ -149,15 +236,18 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     }
   }
 
-  private inner class ScrollPaneHandler constructor(val scrollPane: JScrollPane, startEvent: MouseEvent) :
+  private inner class ScrollPaneHandler(val scrollPane: JScrollPane, startEvent: MouseEvent) :
     Handler(scrollPane, startEvent) {
 
     override fun scrollComponent(deltaX: Int, deltaY: Int) {
+      val scaledDeltaX = applyScrollScale(deltaX, isVertical = false)
+      val scaledDeltaY = applyScrollScale(deltaY, isVertical = true)
+
       val hBar = scrollPane.horizontalScrollBar
       val vBar = scrollPane.verticalScrollBar
 
-      if (hBar != null && hBar.isVisible) hBar.value = hBar.value + deltaX
-      if (vBar != null && vBar.isVisible) vBar.value = vBar.value + deltaY
+      if (hBar != null && hBar.isVisible) hBar.value = hBar.value + scaledDeltaX
+      if (vBar != null && vBar.isVisible) vBar.value = vBar.value + scaledDeltaY
     }
 
     @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
@@ -166,14 +256,71 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     }
   }
 
-  private abstract inner class Handler constructor(val component: JComponent, startEvent: MouseEvent) : Disposable {
+  private inner class TerminalHandler(val terminal: JBTerminalWidget, startEvent: MouseEvent) :
+    Handler(terminal.component, startEvent) {
+
+    private var scrollBar: javax.swing.JScrollBar? = null
+
+    init {
+      // Try multiple approaches to find the scrollbar
+      // Approach 1: Look for JScrollPane parent
+      val scrollPane = UIUtil.getParentOfType(JScrollPane::class.java, terminal.component)
+      scrollBar = scrollPane?.verticalScrollBar
+
+      // Approach 2: Search in terminal's component hierarchy
+      if (scrollBar == null) {
+        scrollBar = findScrollBarInComponent(terminal.component)
+      }
+
+      // Approach 3: Try to find scrollbar via reflection
+      if (scrollBar == null) {
+        try {
+          val method = terminal.javaClass.getMethod("getScrollBar")
+          scrollBar = method.invoke(terminal) as? javax.swing.JScrollBar
+        } catch (_: Exception) {
+        }
+      }
+    }
+
+    private fun findScrollBarInComponent(component: Component): javax.swing.JScrollBar? {
+      if (component is javax.swing.JScrollBar && component.orientation == javax.swing.JScrollBar.VERTICAL) {
+        return component
+      }
+      if (component is Container) {
+        for (child in component.components) {
+          val found = findScrollBarInComponent(child)
+          if (found != null) return found
+        }
+      }
+      return null
+    }
+
+    override fun scrollComponent(deltaX: Int, deltaY: Int) {
+      // Terminal scrolling is typically vertical only
+      if (deltaY == 0) return
+
+      val vBar = scrollBar
+      if (vBar != null) {
+        // Apply terminal-specific slowdown, then apply general scroll scale
+        val terminalScaledDelta = (deltaY / FMSSettings.instance.terminalScrollScale.toDouble()).toInt()
+        val finalDelta = applyScrollScale(terminalScaledDelta, isVertical = true)
+        vBar.value = (vBar.value + finalDelta).coerceIn(vBar.minimum, vBar.maximum)
+      }
+    }
+
+    override fun setCursor(cursor: Cursor?) {
+      terminal.component.cursor = cursor
+    }
+  }
+
+  private abstract inner class Handler(val component: JComponent, startEvent: MouseEvent) : Disposable {
 
     private val settings = FMSSettings.instance
     private val scrollSinceTs: Long = System.currentTimeMillis()
     private val trailSince: Long = scrollSinceTs + settings.activationMs
 
 
-    private val alarm = Alarm()
+    private val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
 
     private var lastScrollTs: Long = scrollSinceTs
     private var lastMoveTs: Long = scrollSinceTs
@@ -190,6 +337,12 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     var isDisposed = false
       private set
 
+    protected fun applyScrollScale(delta: Int, isVertical: Boolean): Int {
+      val scale = settings.scrollScale / 100.0
+      val inverse = if (isVertical && settings.inverseVertical || !isVertical && settings.inverseHorizontal) -1 else 1
+      return (delta * scale * inverse).toInt()
+    }
+
     fun start(): Handler {
       setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))
       scheduleScrollEvent()
@@ -199,7 +352,6 @@ class KineticScrollEventListener : IdeEventQueue.EventDispatcher {
     override fun dispose() {
       isDisposed = true
       setCursor(null)
-      Disposer.dispose(alarm)
     }
 
     fun mouseReleased(event: MouseEvent): Boolean {

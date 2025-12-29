@@ -12,16 +12,21 @@ repositories {
 }
 
 group = "com.stasmarkin"
-version = "1.0.4"
+version = "1.1.0"
 
 intellij {
   type.set("IC")
-  version.set("2023.3")
+  version.set("2024.1")
   updateSinceUntilBuild.set(false)
 }
 
 tasks.withType<PublishPluginTask> {
   token.set(System.getProperty("PUBLISH_TOKEN"))
+}
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_17
+  targetCompatibility = JavaVersion.VERSION_17
 }
 
 tasks.withType<KotlinCompile> {

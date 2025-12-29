@@ -2,6 +2,7 @@
 .gradle
 /gradle/
 gradlew*
+.claude
 
 .idea/**
 !.idea/vcs.xml
