@@ -12,7 +12,7 @@ repositories {
 }
 
 group = "com.stasmarkin"
-version = "1.0.5-SNAPSHOT"
+version = "1.1.0"
 
 intellij {
   type.set("IC")
