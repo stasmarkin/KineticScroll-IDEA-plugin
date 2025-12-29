@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.stasmarkin.kineticscroll</id>
     <name>Kinetic Mouse Scrolling</name>
-    <version>1.0.3</version>
+    <version>1.1.1</version>
     <vendor email="stasmarkin@gmail.com">Stanislav Markin</vendor>
 
     <description><![CDATA[
@@ -13,6 +13,8 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        1.1.1: Documentation<br/>
+        1.1.0: Added terminal scrolling support, scroll scale control (x0.2-x5.0), inverse scrolling options, and enhanced settings UI<br/>
         1.0.5: Fixed deprecated Alarm() constructor usage<br/>
         1.0.4: Deprecated API fix<br/>
         1.0.3: Lifecycle fix + settings menu
