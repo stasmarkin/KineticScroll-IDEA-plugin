@@ -11,3 +11,5 @@ gradlew*
 
 vcs.xml
 .sdkmanrc
+
+.env
